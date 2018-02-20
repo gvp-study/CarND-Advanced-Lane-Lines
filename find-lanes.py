@@ -74,29 +74,26 @@ for idx, fname in enumerate(images):
     # Mapping the four points that make the perspective projection.
     img_size = (img.shape[1], img.shape[0]) # 1280 x 720
     print('Image size is ', img_size)
-    bot_width = 0.76 # Bottom trapezoid width
-    mid_width = 0.125 # Middle trapezoid width
+    bot_width = 0.80 # Bottom trapezoid width
+    mid_width = 0.15 # Middle trapezoid width
     height_pct = 0.62 # Trapezoid height
     bottom_trim = 0.935 # From bottom to avoid the car hood
 #    isrc = np.int32([[600, 500],
 #                     [750, 500],
 #                     [1180, 680], 1280-100, 
 #                     [100, 680]]) 100
-    src=np.float32([[img.shape[1]*(0.5-mid_width/2),img.shape[0]*height_pct],
-                     [img.shape[1]*(0.5+mid_width/2),img.shape[0]*height_pct],
-                     [img.shape[1]*(0.5+bot_width/2),img.shape[0]*bottom_trim],
-                     [img.shape[1]*(0.5-bot_width/2),img.shape[0]*bottom_trim]])
+    slt = [img.shape[1]*(0.5-mid_width/2),img.shape[0]*height_pct]
+    srt = [img.shape[1]*(0.5+mid_width/2),img.shape[0]*height_pct]
+    srb = [img.shape[1]*(0.5+bot_width/2),img.shape[0]*bottom_trim]
+    slb = [img.shape[1]*(0.5-bot_width/2),img.shape[0]*bottom_trim]
+    src=np.float32([slt, srt, srb, slb])
     print(src)
-    src1 = np.float32([[600, img.shape[0]*height_pct],
-                      [750, img.shape[0]*height_pct],
-                      [1180, img.shape[0]*bottom_trim],
-                      [100, img.shape[0]*bottom_trim]])
-    print(src1)
+    dlt = [offset, 0]
+    drt = [img_size[0]-offset, 0]
+    drb = [img_size[0]-offset, img_size[1]]
+    dlb = [offset, img_size[1]]
     offset = img_size[0]*0.1 # 320
-    dst = np.float32([[offset, 0],
-                      [img_size[0]-offset, 0], 
-                      [img_size[0]-offset, img_size[1]], 
-                      [offset, img_size[1]]])
+    dst = np.float32([dlt, drt, drb, dlb])
     print(dst)
     # Perform the transforms.
     M = cv2.getPerspectiveTransform(src,dst)
@@ -108,15 +105,8 @@ for idx, fname in enumerate(images):
     cv2.imwrite(write_name, warped)
 
     write_name = './test_images/preprocessed_test'+str(idx+1)+'.jpg'
-    isrc = np.int32([[img.shape[1]*(0.5-mid_width/2), img.shape[0]*height_pct],
-                     [img.shape[1]*(0.5+mid_width/2), img.shape[0]*height_pct],
-                     [img.shape[1]*(0.5+bot_width/2), img.shape[0]*bottom_trim],
-                     [img.shape[1]*(0.5-bot_width/2), img.shape[0]*bottom_trim]])
-
-    idst = np.int32([[offset, 0],
-                     [img_size[0]-offset, 0], 
-                     [img_size[0]-offset, img_size[1]], 
-                     [offset, img_size[1]]])
+    isrc = np.int32([slt, srt, srb, slb])
+    idst = np.int32([dlt, drt, drb, dlb])
     cv2.polylines(img, [isrc], True, (0,255,0), 3)
     cv2.polylines(img, [idst], True, (255,0,0), 3)
     cv2.imwrite(write_name, img)
