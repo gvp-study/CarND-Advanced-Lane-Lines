@@ -183,8 +183,14 @@ for idx, fname in enumerate(images):
     l_points = np.zeros_like(warped)
     r_points = np.zeros_like(warped)
 
+    leftx = []
+    rightx = []
+    
     for level in range(0,len(window_centroids)):
         # Mask
+        leftx.append(window_centroids[level][0])
+        rightx.append(window_centroids[level][1])
+        
         l_mask = window_mask(window_width,window_height,
                              warped,window_centroids[level][0],level)
         r_mask = window_mask(window_width,window_height,
@@ -219,3 +225,57 @@ for idx, fname in enumerate(images):
     write_name = './test_images/tracked'+str(idx+1)+'.jpg'
     cv2.imwrite(write_name, result)
 
+    # Fit the curve to lanes.
+    yvals = range(0,warped.shape[0])
+
+    res_yvals = np.arange(warped.shape[0]-(window_height/2),0,-window_height)
+
+    left_fit = np.polyfit(res_yvals,leftx,2)
+    left_fitx = left_fit[0]*yvals*yvals + left_fit[1]*yvals + left_fit[2]
+    left_fitx = np.array(left_fitx,np.int32)
+
+    right_fit = np.polyfit(res_yvals,rightx,2)
+    right_fitx = right_fit[0]*yvals*yvals + right_fit[1]*yvals + right_fit[2]
+    right_fitx = np.array(right_fitx,np.int32)
+
+    left_lane = np.array(list(zip(np.concatenate((left_fitx-window_width/2,left_fitx[::-1]+window_width/2), axis=0), np.concatenate((yvals,yvals[::-1]),axis=0))), np.int32)
+    right_lane = np.array(list(zip(np.concatenate((right_fitx-window_width/2,right_fitx[::-1]+window_width/2), axis=0), np.concatenate((yvals,yvals[::-1]),axis=0))), np.int32)
+    middle_marker = np.array(list(zip(np.concatenate((right_fitx-window_width/2,right_fitx[::-1]+window_width/2), axis=0), np.concatenate((yvals,yvals[::-1]),axis=0))), np.int32)
+
+    road = np.zeros_like(img)
+    road_bkg = np.zeros_like(img)
+    cv2.fillPoly(road, [left_lane], color=[255,0,0])
+    cv2.fillPoly(road, [right_lane], color=[0,0,255])
+    cv2.fillPoly(road_bkg, [left_lane], color=[255,255,255])
+    cv2.fillPoly(road_bkg, [right_lane], color=[255,255,255])
+
+    road_warped = cv2.warpPerspective(road, Minv, img_size, flags=cv2.INTER_LINEAR)
+    road_warped_bkg = cv2.warpPerspective(road_bkg, Minv, img_size, flags=cv2.INTER_LINEAR)
+    
+    base = cv2.addWeighted(img, 1.0, road_warped_bkg, -1.0, 0.0)
+    result = cv2.addWeighted(base, 1.0, road_warped, 1.0, 0.0)
+
+    ym_per_pix = curve_centers.ym_per_pix
+    xm_per_pix = curve_centers.xm_per_pix
+
+    curve_fit_cr = np.polyfit(np.array(res_yvals,np.float32)*ym_per_pix, np.array(leftx,np.float32)*xm_per_pix, 2)
+    curverad = ((1 + (2*curve_fit_cr[0]*yvals[-1]*ym_per_pix + curve_fit_cr[1])**2)**1.5)/np.absolute(2*curve_fit_cr[0])
+    
+    
+    # Calculate the offset
+    camera_center = (left_fitx[-1] + right_fitx[-1])/2
+    center_diff = (camera_center-warped.shape[1]/2)*xm_per_pix
+    side_pos = 'left'
+    if(center_diff <= 0):
+        side_pos = 'right'
+
+    cv2.putText(result, 'Radius of Curvature = '+str(round(curverad,3))+'(m)',(50,50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255),2)
+    cv2.putText(result, 'Vehicle is '+str(abs(round(center_diff,3)))+'(m)'+side_pos+' of center',(50,100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255),2)
+
+    write_name = './test_images/lanes'+str(idx+1)+'.jpg'
+    cv2.imwrite(write_name, road)
+
+    write_name = './test_images/overlay-lanes'+str(idx+1)+'.jpg'
+    cv2.imwrite(write_name, result)
+
+                
