@@ -138,7 +138,7 @@ for idx, fname in enumerate(images):
     gradx = abs_sobel_thresh(uimg, orient='x', thresh=(20,100))
     grady = abs_sobel_thresh(uimg, orient='y', thresh=(20,100))
 #    c_binary = color_threshold(uimg, s_thresh=(100,255), v_thresh=(50,255))
-    c_binary = color_threshold(uimg, s_thresh=(100,255), v_thresh=(150,255))
+    c_binary = color_threshold(uimg, s_thresh=(100,255), v_thresh=(50,255))
     preprocessImage[((gradx==1) & (grady==1) | (c_binary==1))] = 255
 #    preprocessImage[((gradx==1) | (c_binary==1))] = 255
 
@@ -155,7 +155,7 @@ for idx, fname in enumerate(images):
     slb = [img.shape[1]*(0.5-bot_width/2),img.shape[0]*bottom_trim]
     src=np.float32([slt, srt, srb, slb])
     print(src)
-    offset = img_size[0]*0.25 # 320
+    offset = img_size[0]*0.2 # 320
     dlt = [offset, 0]
     drt = [img_size[0]-offset, 0]
     drb = [img_size[0]-offset, img_size[1]]
@@ -165,7 +165,8 @@ for idx, fname in enumerate(images):
     # Perform the transforms.
     M = cv2.getPerspectiveTransform(src,dst)
     Minv = cv2.getPerspectiveTransform(dst,src)
-    warped = cv2.warpPerspective(preprocessImage,M,img_size,flags=cv2.INTER_LINEAR)
+    warped = cv2.warpPerspective(preprocessImage,M,
+                                 img_size,flags=cv2.INTER_LINEAR)
 
     window_width = 25
     window_height = 80
@@ -184,8 +185,10 @@ for idx, fname in enumerate(images):
 
     for level in range(0,len(window_centroids)):
         # Mask
-        l_mask = window_mask(window_width,window_height,warped,window_centroids[level][0],level)
-        r_mask = window_mask(window_width,window_height,warped,window_centroids[level][1],level)
+        l_mask = window_mask(window_width,window_height,
+                             warped,window_centroids[level][0],level)
+        r_mask = window_mask(window_width,window_height,
+                             warped,window_centroids[level][1],level)
         # Add graphics
         l_points[(l_points ==255) | ((l_mask == 1))] = 255
         r_points[(r_points ==255) | ((r_mask == 1))] = 255
