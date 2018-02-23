@@ -48,7 +48,7 @@ class tracker():
 
         r_sum = np.sum(warped[int(3*img_hgt/4):, int(img_wdt/2):], axis=0)
         r_center = np.argmax(np.convolve(window,r_sum))-window_width/2+int(img_wdt/2)
-        print('Left starts ', l_center, ' Right starts ', r_center)
+#        print('Left starts ', l_center, ' Right starts ', r_center)
         
         # Add what we find to the first layer
         window_centroids.append((l_center, r_center))
@@ -68,14 +68,14 @@ class tracker():
             # Find right centroid.
             r_min_index = int(max(r_center+offset-margin,0))
             r_max_index = int(min(r_center+offset+margin,img_wdt))
-            print(r_min_index, r_max_index)
+#            print(r_min_index, r_max_index)
             rmax = np.max(conv_signal[r_min_index:r_max_index])
             if(rmax > 0):
                 r_center = np.argmax(conv_signal[r_min_index:r_max_index])+r_min_index-offset
 
             # Add to list.
             window_centroids.append((l_center, r_center))
-            print('Left ', level, ' ', l_center, ' Right ', level, ' ', r_center, ' Conv ', rmax)
+#            print('Left ', level, ' ', l_center, ' Right ', level, ' ', r_center, ' Conv ', rmax)
 
         self.recent_centers.append(window_centroids)
         # Return

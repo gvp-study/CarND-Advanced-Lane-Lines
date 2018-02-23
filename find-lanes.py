@@ -115,7 +115,8 @@ height_pct = 0.62 # Trapezoid height
 bottom_trim = 0.935 # From bottom to avoid the car hood
 
 #images = glob.glob('./test_images/straight_lines*.jpg')
-images = glob.glob('./test_images/test*.jpg')
+#images = glob.glob('./test_images/test*.jpg')
+images = glob.glob('./test_images2/challenge*.jpg')
 for idx, fname in enumerate(images):
     # Read in the image
     img = cv2.imread(fname)
@@ -209,20 +210,20 @@ for idx, fname in enumerate(images):
 
     # Write it out.
     print('Gradient + Color Thresholding Warp Perspective', idx, ' ', fname)
-    write_name = './test_images/lanes_test'+str(idx+1)+'.jpg'
+    write_name = './test_images2/lanes_test'+str(idx+1)+'.jpg'
     cv2.imwrite(write_name, warped)
 
-    write_name = './test_images/preprocessed_test'+str(idx+1)+'.jpg'
+    write_name = './test_images2/preprocessed_test'+str(idx+1)+'.jpg'
     isrc = np.int32([slt, srt, srb, slb])
     idst = np.int32([dlt, drt, drb, dlb])
     cv2.polylines(img, [isrc], True, (0,255,0), 3)
     cv2.polylines(img, [idst], True, (255,0,0), 3)
     cv2.imwrite(write_name, img)
 
-    write_name = './test_images/undistorted_test'+str(idx+1)+'.jpg'
+    write_name = './test_images2/undistorted_test'+str(idx+1)+'.jpg'
     cv2.imwrite(write_name, c_binary*255)
 
-    write_name = './test_images/tracked'+str(idx+1)+'.jpg'
+    write_name = './test_images2/tracked'+str(idx+1)+'.jpg'
     cv2.imwrite(write_name, result)
 
     # Fit the curve to lanes.
@@ -272,10 +273,10 @@ for idx, fname in enumerate(images):
     cv2.putText(result, 'Radius of Curvature = '+str(round(curverad,3))+'(m)',(50,50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255),2)
     cv2.putText(result, 'Vehicle is '+str(abs(round(center_diff,3)))+'(m)'+side_pos+' of center',(50,100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255),2)
 
-    write_name = './test_images/lanes'+str(idx+1)+'.jpg'
+    write_name = './test_images2/lanes'+str(idx+1)+'.jpg'
     cv2.imwrite(write_name, road)
 
-    write_name = './test_images/overlay-lanes'+str(idx+1)+'.jpg'
+    write_name = './test_images2/overlay-lanes'+str(idx+1)+'.jpg'
     cv2.imwrite(write_name, result)
 
                 
