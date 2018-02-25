@@ -180,7 +180,6 @@ for idx, fname in enumerate(images):
     cv2.polylines(warped_orig, [isrc], True, (0,255,0), 3)
     cv2.polylines(warped_orig, [idst], True, (255,0,0), 3)
     cv2.imwrite(write_name, warped_orig)
-
     #
     # Tracking the left and right lane lines from bottom to top of the image.
     #
@@ -229,8 +228,8 @@ for idx, fname in enumerate(images):
 
 
     write_name = './'+dir+'/preprocessed'+str(idx+1)+'.jpg'
-    cv2.polylines(img, [isrc], True, (0,255,0), 3)
-    cv2.polylines(img, [idst], True, (255,0,0), 3)
+#    cv2.polylines(img, [isrc], True, (0,255,0), 3)
+#    cv2.polylines(img, [idst], True, (255,0,0), 3)
     cv2.imwrite(write_name, img)
 
     write_name = './'+dir+'/undistorted'+str(idx+1)+'.jpg'
@@ -259,14 +258,15 @@ for idx, fname in enumerate(images):
     right_line = np.array(list(zip(np.concatenate((right_fitx-window_width/2,
                                                    right_fitx[::-1]+window_width/2), axis=0),
                                    np.concatenate((yvals,yvals[::-1]),axis=0))), np.int32)
-    middle_line = np.array(list(zip(np.concatenate((right_fitx-window_width/2,
-                                                      right_fitx[::-1]+window_width/2), axis=0),
-                                      np.concatenate((yvals,yvals[::-1]),axis=0))), np.int32)
+    middle = np.array(list(zip(np.concatenate((left_fitx+window_width/2,
+                                               right_fitx[::-1]-window_width/2), axis=0),
+                               np.concatenate((yvals,yvals[::-1]),axis=0))), np.int32)
 
     road = np.zeros_like(img)
     road_bkg = np.zeros_like(img)
     cv2.fillPoly(road, [left_line], color=[255,0,0])
     cv2.fillPoly(road, [right_line], color=[0,0,255])
+    cv2.fillPoly(road, [middle], color=[0,255,0])
     cv2.fillPoly(road_bkg, [left_line], color=[255,255,255])
     cv2.fillPoly(road_bkg, [right_line], color=[255,255,255])
 
@@ -274,8 +274,9 @@ for idx, fname in enumerate(images):
     road_warped_bkg = cv2.warpPerspective(road_bkg, Minv, img_size, flags=cv2.INTER_LINEAR)
     
     base = cv2.addWeighted(img, 1.0, road_warped_bkg, -1.0, 0.0)
-    result = cv2.addWeighted(base, 1.0, road_warped, 1.0, 0.0)
+    result = cv2.addWeighted(base, 1.0, road_warped, 0.8, 0.0)
 
+    # Conversion factor from pixel to meters
     ym_per_pix = curve_centers.ym_per_pix
     xm_per_pix = curve_centers.xm_per_pix
 
@@ -291,8 +292,10 @@ for idx, fname in enumerate(images):
     if(center_diff <= 0):
         side_pos = 'right'
 
-    cv2.putText(result, 'Radius of Curvature = '+str(round(curverad,3))+'(m)',(50,50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255),2)
-    cv2.putText(result, 'Vehicle is '+str(abs(round(center_diff,3)))+'(m)'+side_pos+' of center',(50,100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255),2)
+    cv2.putText(result, 'Radius of Curvature = '+str(round(curverad,3))+'(m)',(50,50),
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255),2)
+    cv2.putText(result, 'Vehicle is '+str(abs(round(center_diff,3)))+'(m)'+side_pos+' of center',
+                (50,100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255),2)
 
     write_name = './'+dir+'/lines'+str(idx+1)+'.jpg'
     cv2.imwrite(write_name, road)

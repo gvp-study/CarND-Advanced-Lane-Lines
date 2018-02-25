@@ -214,15 +214,15 @@ def process_image(img):
     right_line = np.array(list(zip(np.concatenate((right_fitx-window_width/2,
                                                    right_fitx[::-1]+window_width/2), axis=0),
                                    np.concatenate((yvals,yvals[::-1]),axis=0))), np.int32)
-    middle_line = np.array(list(zip(np.concatenate((left_fitx+window_width/2,
-                                                   right_fitx[::-1]-window_width/2), axis=0),
-                                   np.concatenate((yvals,yvals[::-1]),axis=0))), np.int32)
+    middle = np.array(list(zip(np.concatenate((left_fitx+window_width/2,
+                                               right_fitx[::-1]-window_width/2), axis=0),
+                               np.concatenate((yvals,yvals[::-1]),axis=0))), np.int32)
 
     road = np.zeros_like(img)
     road_bkg = np.zeros_like(img)
     cv2.fillPoly(road, [left_line], color=[255,0,0])
     cv2.fillPoly(road, [right_line], color=[0,0,255])
-    cv2.fillPoly(road, [middle_line], color=[0,255,0])
+    cv2.fillPoly(road, [middle], color=[0,255,0])
     cv2.fillPoly(road_bkg, [left_line], color=[255,255,255])
     cv2.fillPoly(road_bkg, [right_line], color=[255,255,255])
 
@@ -232,6 +232,7 @@ def process_image(img):
     base = cv2.addWeighted(img, 1.0, road_warped_bkg, -1.0, 0.0)
     result = cv2.addWeighted(base, 1.0, road_warped, 0.7, 0.0)
 
+    # Conversion factor from pixel to meters
     ym_per_pix = curve_centers.ym_per_pix
     xm_per_pix = curve_centers.xm_per_pix
 
