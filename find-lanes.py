@@ -74,11 +74,14 @@ def color_threshold(img, s_thresh=(170, 255), v_thresh=(20, 100)):
     output[(s_binary==1) & (v_binary==1)] = 1
     return output
 
+# Makes a window mask around pixels in the rows at the height level
 def window_mask(width, height, img_ref, center, level):
     output = np.zeros_like(img_ref)
-    output[int(img_ref.shape[0]-(level+1)*height):int(img_ref.shape[0]-level*height), max(0,int(center-width)):min(int(center+width),img_ref.shape[1])] = 1
+    output[int(img_ref.shape[0]-(level+1)*height):int(img_ref.shape[0]-level*height),
+           max(0,int(center-width)):min(int(center+width),img_ref.shape[1])] = 1
     return output
 
+# Makes a mask about a region of interest defined by the vertices polygon.
 def region_of_interest(img, vertices):
     """
     Applies an image mask.
@@ -109,35 +112,46 @@ def region_of_interest(img, vertices):
 dist_pickle = pickle.load( open( "calibration_pickle.p", "rb" ) )
 mtx = dist_pickle["mtx"]
 dist = dist_pickle["dist"]
-#bot_width = 0.76 # Bottom trapezoid width
-#mid_width = 0.1 # Middle trapezoid width
-#height_pct = 0.62 # Trapezoid height
-#bottom_trim = 0.935 # From bottom to avoid the car hood
-bot_width = 0.65 # Bottom trapezoid width
-mid_width = 0.08 # Middle trapezoid width
-height_pct = 0.62 # Trapezoid height
-bottom_trim = 0.935 # From bottom to avoid the car hood
-
-#images = glob.glob('./test_images/straight_lines*.jpg')
-images = glob.glob('./test_images/test*.jpg')
+dir = 'test_images'
 #images = glob.glob('./test_images2/challenge*.jpg')
+images = glob.glob('./'+dir+'/test*.jpg')
+
+# Go over the list of images.
 for idx, fname in enumerate(images):
     # Read in the image
     img = cv2.imread(fname)
-    vlt = [img.shape[1]*(0.5-mid_width/2),img.shape[0]*height_pct]
-    vrt = [img.shape[1]*(0.5+mid_width/2),img.shape[0]*height_pct]
-    vrb = [img.shape[1]*(0.5+bot_width/2),img.shape[0]*bottom_trim]
-    vlb = [img.shape[1]*(0.5-bot_width/2),img.shape[0]*bottom_trim]
-    vertices = np.array([[vlt, vrt, vrb, vlb]], dtype=np.int32)
 
-    print(vertices, vertices.shape)
-
-    roi = region_of_interest(img, vertices)
-    img = roi
+    img_size = (img.shape[1], img.shape[0]) # 1280 x 720
+    # Source and destination polygons to warp the undistorted image to overhead view.
+    src = np.float32(
+        [[(img_size[0] / 2) - 55, img_size[1] / 2 + 100],
+         [((img_size[0] / 6) - 10), img_size[1]],
+         [(img_size[0] * 5 / 6) + 60, img_size[1]],
+         [(img_size[0] / 2 + 55), img_size[1] / 2 + 100]])
+    frac = 0.2
+    dst = np.float32(
+        [[(img_size[0] * (0.5-frac)), 0],
+         [(img_size[0] * (0.5-frac)), img_size[1]],
+         [(img_size[0] * (0.5+frac)), img_size[1]],
+         [(img_size[0] * (0.5+frac)), 0]])
+    isrc = np.int32(src)
+    idst = np.int32(dst)
     
     print('Undistorting ', idx, ' ', fname)
     # Undistort it.
     uimg = cv2.undistort(img, mtx, dist, None, mtx)
+    # Write it.
+    udimg = np.copy(uimg)
+    write_name = './'+dir+'/undistorted'+str(idx+1)+'.jpg'
+    cv2.imwrite(write_name, udimg)
+
+    # Write it.
+    soimg = np.copy(uimg)
+    cv2.polylines(soimg, [isrc], True, (0,255,0), 3)
+    cv2.polylines(soimg, [idst], True, (255,0,0), 3)
+    write_name = './'+dir+'/src-overlay-undistorted'+str(idx+1)+'.jpg'
+    cv2.imwrite(write_name, soimg)
+
     # Make a preprocess image.
     preprocessImage = np.zeros_like(uimg[:,:,0])
 #    gradx = abs_sobel_thresh(uimg, orient='x', thresh=(20,100))
@@ -147,37 +161,32 @@ for idx, fname in enumerate(images):
     grady = abs_sobel_thresh_gray(uimg, orient='y', thresh=(20,100))
     c_binary = color_threshold(uimg, s_thresh=(100,255), v_thresh=(50,255))
     preprocessImage[((gradx==1) & (grady==1) | (c_binary==1))] = 255
-#    preprocessImage[((gradx==1) | (c_binary==1))] = 255
 
     # Mapping the four points that make the perspective projection.
-    img_size = (img.shape[1], img.shape[0]) # 1280 x 720
+    # This is the warped overhead look.
     print('Image size is ', img_size)
-#    isrc = np.int32([[600, 500],
-#                     [750, 500],
-#                     [1180, 680], 1280-100, 
-#                     [100, 680]]) 100
-    slt = [img.shape[1]*(0.5-mid_width/2),img.shape[0]*height_pct]
-    srt = [img.shape[1]*(0.5+mid_width/2),img.shape[0]*height_pct]
-    srb = [img.shape[1]*(0.5+bot_width/2),img.shape[0]*bottom_trim]
-    slb = [img.shape[1]*(0.5-bot_width/2),img.shape[0]*bottom_trim]
-    src=np.float32([slt, srt, srb, slb])
-    print(src)
-    offset = img_size[0]*0.2 # 320
-    dlt = [offset, 0]
-    drt = [img_size[0]-offset, 0]
-    drb = [img_size[0]-offset, img_size[1]]
-    dlb = [offset, img_size[1]]
-    dst = np.float32([dlt, drt, drb, dlb])
-    print(dst)
+    print(isrc)
+    print(idst)
     # Perform the transforms.
     M = cv2.getPerspectiveTransform(src,dst)
     Minv = cv2.getPerspectiveTransform(dst,src)
     warped = cv2.warpPerspective(preprocessImage,M,
                                  img_size,flags=cv2.INTER_LINEAR)
 
+    warped_orig = cv2.warpPerspective(img,M,
+                                      img_size,flags=cv2.INTER_LINEAR)
+
+    write_name = './'+dir+'/dst-overlay-warped'+str(idx+1)+'.jpg'
+    cv2.polylines(warped_orig, [isrc], True, (0,255,0), 3)
+    cv2.polylines(warped_orig, [idst], True, (255,0,0), 3)
+    cv2.imwrite(write_name, warped_orig)
+
+    #
+    # Tracking the left and right lane lines from bottom to top of the image.
+    #
     window_width = 25
     window_height = 80
-    # Set up th overall class to do the tracking.
+    # Set up th overall class to do the tracking from tracker.py
     curve_centers = tracker(Mywindow_width = window_width,
                             Mywindow_height = window_height,
                             Mymargin = 25,
@@ -192,7 +201,7 @@ for idx, fname in enumerate(images):
 
     leftx = []
     rightx = []
-    
+    # Go up from the bottom level.
     for level in range(0,len(window_centroids)):
         # Mask
         leftx.append(window_centroids[level][0])
@@ -206,37 +215,36 @@ for idx, fname in enumerate(images):
         l_points[(l_points ==255) | ((l_mask == 1))] = 255
         r_points[(r_points ==255) | ((r_mask == 1))] = 255
 
-    # Draw
+    # Draw 
     template = np.array(r_points+l_points, np.uint8)
     zero_channel = np.zeros_like(template)
     template = np.array(cv2.merge((zero_channel, template, zero_channel)), np.uint8)
-    warpage = np.array(cv2.merge((warped, warped, warped)), np.uint8)
-    result = cv2.addWeighted(warpage, 1, template, 0.5, 0.0)
-    
+    warp_image = np.array(cv2.merge((warped, warped, warped)), np.uint8)
+    warped_plus_tracked = cv2.addWeighted(warp_image, 1, template, 0.5, 0.0)
 
     # Write it out.
     print('Gradient + Color Thresholding Warp Perspective', idx, ' ', fname)
-    write_name = './test_images/lanes_test'+str(idx+1)+'.jpg'
+    write_name = './'+dir+'/warped-lines'+str(idx+1)+'.jpg'
     cv2.imwrite(write_name, warped)
 
-    write_name = './test_images/preprocessed_test'+str(idx+1)+'.jpg'
-    isrc = np.int32([slt, srt, srb, slb])
-    idst = np.int32([dlt, drt, drb, dlb])
+
+    write_name = './'+dir+'/preprocessed'+str(idx+1)+'.jpg'
     cv2.polylines(img, [isrc], True, (0,255,0), 3)
     cv2.polylines(img, [idst], True, (255,0,0), 3)
     cv2.imwrite(write_name, img)
 
-    write_name = './test_images/undistorted_test'+str(idx+1)+'.jpg'
+    write_name = './'+dir+'/undistorted'+str(idx+1)+'.jpg'
     cv2.imwrite(write_name, c_binary*255)
 
-    write_name = './test_images/tracked'+str(idx+1)+'.jpg'
-    cv2.imwrite(write_name, result)
+    write_name = './'+dir+'/tracked'+str(idx+1)+'.jpg'
+    cv2.imwrite(write_name, warped_plus_tracked)
+
 
     # Fit the curve to lanes.
     yvals = range(0,warped.shape[0])
 
     res_yvals = np.arange(warped.shape[0]-(window_height/2),0,-window_height)
-
+    
     left_fit = np.polyfit(res_yvals,leftx,2)
     left_fitx = left_fit[0]*yvals*yvals + left_fit[1]*yvals + left_fit[2]
     left_fitx = np.array(left_fitx,np.int32)
@@ -245,16 +253,22 @@ for idx, fname in enumerate(images):
     right_fitx = right_fit[0]*yvals*yvals + right_fit[1]*yvals + right_fit[2]
     right_fitx = np.array(right_fitx,np.int32)
 
-    left_lane = np.array(list(zip(np.concatenate((left_fitx-window_width/2,left_fitx[::-1]+window_width/2), axis=0), np.concatenate((yvals,yvals[::-1]),axis=0))), np.int32)
-    right_lane = np.array(list(zip(np.concatenate((right_fitx-window_width/2,right_fitx[::-1]+window_width/2), axis=0), np.concatenate((yvals,yvals[::-1]),axis=0))), np.int32)
-    middle_marker = np.array(list(zip(np.concatenate((right_fitx-window_width/2,right_fitx[::-1]+window_width/2), axis=0), np.concatenate((yvals,yvals[::-1]),axis=0))), np.int32)
+    left_line = np.array(list(zip(np.concatenate((left_fitx-window_width/2,
+                                                  left_fitx[::-1]+window_width/2), axis=0),
+                                  np.concatenate((yvals,yvals[::-1]),axis=0))), np.int32)
+    right_line = np.array(list(zip(np.concatenate((right_fitx-window_width/2,
+                                                   right_fitx[::-1]+window_width/2), axis=0),
+                                   np.concatenate((yvals,yvals[::-1]),axis=0))), np.int32)
+    middle_line = np.array(list(zip(np.concatenate((right_fitx-window_width/2,
+                                                      right_fitx[::-1]+window_width/2), axis=0),
+                                      np.concatenate((yvals,yvals[::-1]),axis=0))), np.int32)
 
     road = np.zeros_like(img)
     road_bkg = np.zeros_like(img)
-    cv2.fillPoly(road, [left_lane], color=[255,0,0])
-    cv2.fillPoly(road, [right_lane], color=[0,0,255])
-    cv2.fillPoly(road_bkg, [left_lane], color=[255,255,255])
-    cv2.fillPoly(road_bkg, [right_lane], color=[255,255,255])
+    cv2.fillPoly(road, [left_line], color=[255,0,0])
+    cv2.fillPoly(road, [right_line], color=[0,0,255])
+    cv2.fillPoly(road_bkg, [left_line], color=[255,255,255])
+    cv2.fillPoly(road_bkg, [right_line], color=[255,255,255])
 
     road_warped = cv2.warpPerspective(road, Minv, img_size, flags=cv2.INTER_LINEAR)
     road_warped_bkg = cv2.warpPerspective(road_bkg, Minv, img_size, flags=cv2.INTER_LINEAR)
@@ -265,10 +279,11 @@ for idx, fname in enumerate(images):
     ym_per_pix = curve_centers.ym_per_pix
     xm_per_pix = curve_centers.xm_per_pix
 
-    curve_fit_cr = np.polyfit(np.array(res_yvals,np.float32)*ym_per_pix, np.array(leftx,np.float32)*xm_per_pix, 2)
-    curverad = ((1 + (2*curve_fit_cr[0]*yvals[-1]*ym_per_pix + curve_fit_cr[1])**2)**1.5)/np.absolute(2*curve_fit_cr[0])
-    
-    
+    curve_fit_cr = np.polyfit(np.array(res_yvals,np.float32)*ym_per_pix,
+                              np.array(leftx,np.float32)*xm_per_pix, 2)
+    curverad = ((1 + (2*curve_fit_cr[0]*yvals[-1]*ym_per_pix +
+                      curve_fit_cr[1])**2)**1.5)/np.absolute(2*curve_fit_cr[0])
+
     # Calculate the offset
     camera_center = (left_fitx[-1] + right_fitx[-1])/2
     center_diff = (camera_center-warped.shape[1]/2)*xm_per_pix
@@ -279,10 +294,10 @@ for idx, fname in enumerate(images):
     cv2.putText(result, 'Radius of Curvature = '+str(round(curverad,3))+'(m)',(50,50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255),2)
     cv2.putText(result, 'Vehicle is '+str(abs(round(center_diff,3)))+'(m)'+side_pos+' of center',(50,100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255),2)
 
-    write_name = './test_images/lanes'+str(idx+1)+'.jpg'
+    write_name = './'+dir+'/lines'+str(idx+1)+'.jpg'
     cv2.imwrite(write_name, road)
 
-    write_name = './test_images/overlay-lanes'+str(idx+1)+'.jpg'
+    write_name = './'+dir+'/overlay-lines'+str(idx+1)+'.jpg'
     cv2.imwrite(write_name, result)
 
                 
