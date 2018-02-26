@@ -40,8 +40,8 @@ All the code related to this project is
 The four main python files are:
 * calibrate-camera.py: This file when called using 'python calibrate-camera.py' will read in the calibration images from the camera_cal directory, calibrate the camera and write the calibration parameters into a pickle file calibration_pickle.p.
 * tracker.py: This file contains the main function called find_window_centroids that tracks the lane line in an image.
-* find-lanes.py: This is the main python file that tracks the left and right lane lines in images and outputs the result on an overlaid image. This can also convert raw video into an annotated video of the lanes and its curvature.
-* video-gen.py: This python script functions exactly like find-lanes.py but works on reading images from a video and saves the resulting lane marking onto an output video called output1_video.mp4
+* find-lanes.py: This is the main python file that tracks the left and right lane lines in individual images and outputs the result on an overlaid image. The script also outputs the intermediate images during their processing from the raw image to an annotated image with the left and right lines overlaid and the curvature of the lane in meters and the offset of the car from the center of the lane in meters.
+* video-gen.py: This python script functions exactly like find-lanes.py but works on reading images from a video and saves the resulting lane marking onto an output video called output1_video.mp4. Unlike find-lanes.py, video-gen.py uses a 15 long smoothing history to smooth over the line centers found in previous frames.
 
 ### Camera Calibration
 
@@ -87,7 +87,7 @@ The output of this thresholding step is shown below.
 
 The main thing for figuring out the mapping between the source and destination pixels using the warpPerspective function is to identify the images where the road lines are straight. This lets us visually check for the correctness of our src and dst points. I used the staight-lanes1.jpg images in the test_images directory.
 
-The code to convert the given image to a warped view of the image from overhead is is in lines 174 in `find-lanes.py`.  The cv2.warpPerspective() function takes as inputs an image (`img`), as well as source (`src`) and destination (`dst`) points.  I chose the hardcode the source and destination points in the following manner based on the example.ipynb in the examples directory. I changed the fraction from 0.25 to 0.2 by visually looking at the output:
+The code to convert the given image to a warped view of the image from overhead is in lines 174 in `find-lanes.py`.  The cv2.warpPerspective() function takes as inputs an image (`img`), as well as source (`src`) and destination (`dst`) points.  I chose the hardcode the source and destination points in the following manner based on the example.ipynb in the examples directory. I changed the fraction from 0.25 to 0.2 by visually looking at the output:
 
 ```python
 src = np.float32(
@@ -95,7 +95,7 @@ src = np.float32(
     [((img_size[0] / 6) - 10), img_size[1]],
     [(img_size[0] * 5 / 6) + 60, img_size[1]],
     [(img_size[0] / 2 + 55), img_size[1] / 2 + 100]])
-frac = 0.35
+frac = 0.2
 dst = np.float32(
     [[(img_size[0] * (0.5-frac)), 0],
      [(img_size[0] * (0.5-frac)), img_size[1]],
@@ -122,10 +122,14 @@ The warping transform can then used to transform any given image from the camera
 
 #### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
 
-Now that I have the lane line pixels isolated, I used a window approach to progressively track the lane from the bottom of the image to the top. The function find_window_centroids as shown below.
+Now that I have the lane line pixels isolated, I used a window approach to progressively track the lane from the bottom of the image to the top. The call to the function find_window_centroids defined in tracker.py as shown below.
 ```python
 window_centroids = curve_centers.find_window_centroids(warped)
 ```
+The find_window_centroid function convolves a 25x80 pixel white rectangle on the 9 (80 pixel high) horizontal slices of the warped image using the np.convolve function. The centers of the left and right lines are found by looking at the peaks in the convolved output. The tracker starts at the bottom of the image and uses the line centers from the previous slice to restrict the search for the maximum in a tight window. When no line marking is found in a slice, it keeps the centroid from the previous slice.
+
+The find_window_centroid also keep the line centers from all the previous smooth_factor number of frames to smooth out the results. Note that I set this factor to 1 in the find_lanes.py because the input are disparate frames used for testing.
+
 The result of the tracker is shown in the figure below.
 
 ![alt text][image8]
@@ -147,8 +151,8 @@ right_fitx = right_fit[0]*yvals*yvals + right_fit[1]*yvals + right_fit[2]
 right_fitx = np.array(right_fitx,np.int32)
 
 ```
-The result is two smooth curves that fit the left and right lines of the lane shown in blue and red in the figure below.
-The polynomial coefficients can be used to analytically compute the radius of curvature of the left line as shown below. I found that the left and right lines differ in radius.
+The result is two smooth curves that fit the left and right lines of the lane shown in blue and red in the figure below. Note that these are plotted in the warped overhead image view.
+The polynomial coefficients can be used to analytically compute the radius of curvature of the left line as shown below. I found that the left and right lines differ in radius. Note that the recalculation multiplies the both coordinates by their corresponding meters_per_pixel factors so the resulting curvature is in meters.
 
 ```python
 # Convert pixels to meters
@@ -165,6 +169,7 @@ curverad = ((1 + (2*curve_fit_cr[0]*yvals[-1]*ym_per_pix +
 
 #### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
 
+The main step in this process is to convert all the drawings done in the warped top down view back to the normal image coordinates using the warpPerspective() function with the inverse projection transform.
 I implemented this step in the lines 255 through 272 in my code in `find-lanes.py`   Here is an example of my result on a test image: Note that the radius of curvature and the offset from the center of the lane are also displayed.
 
 ![alt text][image10]
@@ -183,9 +188,10 @@ Here's a [link to my video result](./project_video.mp4)
 
 #### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
-One of the main drawbacks to the approach used here is the sensitivity of the lane line thresholding due to brightness and shadows. This will become even more of a problem when the road conditions change depending on the time of day and the weather conditions such as rain. One way to fix this would be to try multiple thresholding approaches based on the overall appearance of the image based on the intensity histogram.
+One of the main drawbacks to the approach used here is the sensitivity of the lane line thresholding due to brightness and shadows. This will become even more of a problem when the road conditions change depending on the time of day and the weather conditions such as rain. One way to fix this would be to try adaptive thresholding approaches based on the overall appearance of the image based on the intensity histogram.
+This drawback of the approach is very apparent when I tested the video-gen.py on the challenge_video.mp4.
 
-Another possible drawback could be the assumption that the transformation of the camera that is computed from the initial straight-lane.jpg remains the same through the rest of the test images and video. Any slope or tilt could affect the assumption.  
+Another possible drawback could be the assumption that the transformation of the camera that is computed from the initial straight-lane.jpg remains the same through the rest of the test images and video. Any slope or tilt of the road or car could affect the assumption.
 
 ### References
-Most of the code for the tracking and video making was written after looking at the video in the Project FAQ found here https://www.youtube.com/watch?v=vWY8YUayf9Q&feature=youtu.be
+Most of the code for the tracking and video making was written after looking at the video in the Project FAQ found here and the course notes. https://www.youtube.com/watch?v=vWY8YUayf9Q&feature=youtu.be
