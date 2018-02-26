@@ -26,7 +26,7 @@ The goals / steps of this project are the following:
 [image8]: ./examples/tracked1.jpg "Warp Example"
 [image9]: ./examples/lines1.jpg "Fit Visual"
 [image10]: ./examples/overlay-lines1.jpg "Output"
-[video1]: ./project_video.mp4 "Video"
+[video1]: ./output1_tracked.mp4 "Video"
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
 
@@ -151,7 +151,7 @@ right_fitx = np.array(right_fitx,np.int32)
 
 ```
 The result is two smooth curves that fit the left and right lines of the lane shown in blue and red in the figure below. Note that these are plotted in the warped overhead image view.
-The polynomial coefficients can be used to analytically compute the radius of curvature of the left line as shown below. I found that the left and right lines differ in radius. Note that the recalculation multiplies the both coordinates by their corresponding meters_per_pixel factors so the resulting curvature is in meters.
+The polynomial coefficients can be used to analytically compute the radius of curvature of the left line as shown below. I found that the left and right lines differ in radius. Note that the recalculation multiplies both coordinates by their corresponding meters_per_pixel factors so the resulting curvature is in meters.
 
 ```python
 # Convert pixels to meters
@@ -179,8 +179,9 @@ I implemented this step in the lines 255 through 272 in my code in `find-lanes.p
 
 #### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
 
-Here's a [link to my video result](./project_video.mp4)
+Here's a link to the video output ./output1_tracked.mp4 that resulted from processing project_video.mp4.
 
+![alt text][video1]
 ---
 
 ### Discussion
