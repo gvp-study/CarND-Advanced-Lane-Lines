@@ -39,9 +39,9 @@ All the code related to this project is
  [here](https://github.com/gvp-study/CarND-Advanced-Lane-Lines.git) . This contains the python files and the ipynb notebook I used to complete the project.  
 The four main python files are:
 * calibrate-camera.py: This file when called using 'python calibrate-camera.py' will read in the calibration images from the camera_cal directory, calibrate the camera and write the calibration parameters into a pickle file calibration_pickle.p.
-* tracker.py: This file contains the main function called find_window_centroids that tracks the lane line in an image.
-* find-lanes.py: This is the main python file that tracks the left and right lane lines in individual images and outputs the result on an overlaid image. The script also outputs the intermediate images during their processing from the raw image to an annotated image with the left and right lines overlaid and the curvature of the lane in meters and the offset of the car from the center of the lane in meters.
-* video-gen.py: This python script functions exactly like find-lanes.py but works on reading images from a video and saves the resulting lane marking onto an output video called output1_video.mp4. Unlike find-lanes.py, video-gen.py uses a 15 long smoothing history to smooth over the line centers found in previous frames.
+* tracker.py: This file contains the main function called find_window_centroids that tracks the lane line in an image. The tracker class also keeps a history of the tracked lines if working with a video.
+* find-lanes.py: This script is called by running 'python find-lanes.py'. This is the main python file that tracks the left and right lane lines in individual images and outputs the result on an overlaid image. The script also outputs the intermediate images during their processing from the raw image to an annotated image with the left and right lines overlaid and the curvature of the lane in meters and the offset of the car from the center of the lane in meters.
+* video-gen.py: This script is called by 'python video-gen.py'. This python script functions exactly like find-lanes.py but works on reading images from a video and saves the resulting lane marking onto an output video called output1_video.mp4. Unlike find-lanes.py, video-gen.py uses a 15 long smoothing history to smooth over the line centers found in previous frames.
 
 ### Camera Calibration
 
