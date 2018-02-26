@@ -55,8 +55,7 @@ I then used the arrays `objpoints` and `imgpoints` to compute the camera calibra
 
 | Projection Matrix       | Coefficients   |
 |:-------------:|:-------------:|
-| [[  1.15396093e+03   0.00000000e+00   6.69705357e+02] [  0.00000000e+00   1.14802496e+03   3.85656234e+02][  0.00000000e+00   0.00000000e+00   1.00000000e+00]] | [[ -2.41017956e-01  -5.30721173e-02  -1.15810355e-03  -1.28318856e-04
-    2.67125290e-02]] |
+| [[  1.15396093e+03   0.00000000e+00   6.69705357e+02] [  0.00000000e+00   1.14802496e+03   3.85656234e+02][  0.00000000e+00   0.00000000e+00   1.00000000e+00]] | [[ -2.41017956e-01  -5.30721173e-02  -1.15810355e-03  -1.28318856e-04  2.67125290e-02]] |
 
 I applied this distortion correction to one of the calibration images using the `cv2.undistort()` function and obtained this result as shown below:
 
