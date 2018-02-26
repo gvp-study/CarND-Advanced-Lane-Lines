@@ -127,7 +127,7 @@ window_centroids = curve_centers.find_window_centroids(warped)
 ```
 The find_window_centroid function convolves a 25x80 pixel white rectangle on the 9 (80 pixel high) horizontal slices of the warped image using the np.convolve function. The centers of the left and right lines are found by looking at the peaks in the convolved output. The tracker starts at the bottom of the image and uses the line centers from the previous slice to restrict the search for the maximum in a tight window. When no line marking is found in a slice, it keeps the centroid from the previous slice.
 
-The find_window_centroid also keep the line centers from all the previous smooth_factor number of frames to smooth out the results. Note that I set this factor to 1 in the find_lanes.py because the input are disparate frames used for testing.
+The find_window_centroid also keep the line centers from all the previous smooth_factor number of frames to smooth out the results. Note that I set this factor to 1 in the find_lanes.py because the input are disparate frames used for testing. I set it back to the default 15 when used in the video-gen.py.
 
 The result of the tracker is shown in the figure below.
 
