@@ -25,7 +25,7 @@ The goals / steps of this project are the following:
 [image7]: ./examples/warped-lines1.jpg "Warp Example"
 [image8]: ./examples/tracked1.jpg "Warp Example"
 [image9]: ./examples/lines1.jpg "Fit Visual"
-[image10]: ./examples/overlay-lines2.jpg "Output"
+[image10]: ./examples/overlay-lines1.jpg "Output"
 [video1]: ./project_video.mp4 "Video"
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
@@ -41,6 +41,7 @@ The four main python files are:
 * calibrate-camera.py: This file when called using 'python calibrate-camera.py' will read in the calibration images from the camera_cal directory, calibrate the camera and write the calibration parameters into a pickle file calibration_pickle.p.
 * tracker.py: This file contains the main function called find_window_centroids that tracks the lane line in an image.
 * find-lanes.py: This is the main python file that tracks the left and right lane lines in images and outputs the result on an overlaid image. This can also convert raw video into an annotated video of the lanes and its curvature.
+* video-gen.py: This python script functions exactly like find-lanes.py but works on reading images from a video and saves the resulting lane marking onto an output video called output1_video.mp4
 
 ### Camera Calibration
 
@@ -48,15 +49,14 @@ The four main python files are:
 
 The code for calibrating a camera from a series of chessboard images is contained in the second code cell of the IPython notebook located in "./Advanced-Lane-Finder.ipynb" and the calibrate-camera.py file. The code when run generates the camera calibration parameters and saves them in the file ./calibration_pickle.p.  
 
-I start by preparing "object points", which will be the (x, y, z) coordinates of the chessboard corners in the world. Here I am assuming the chessboard is fixed on the (x, y) plane at z=0, such that the object points are the same for every calibration image.  Thus, `objp` is just a replicated array of coordinates, and `objpoints` will be appended with a copy of it every time I successfully detect all chessboard corners in a test image.  `imgpoints` will be appended with the (x, y) pixel position of each of the corners in the image plane with each successful chessboard detection.  
+I start by preparing "object points", which are the (x, y, z) coordinates of the chessboard corners in the world. Here I am assuming the chessboard is fixed on the (x, y) plane at z=0, such that the object points are the same for every calibration image.  Thus, `objp` is just a replicated array of coordinates, and `objpoints` will be appended with a copy of it every time I successfully detect all chessboard corners in a test image.  `imgpoints` will be appended with the (x, y) pixel position of each of the corners in the image plane with each successful chessboard detection.  
 
-I then used the output `objpoints` and `imgpoints` to compute the camera calibration and distortion coefficients using the `cv2.calibrateCamera()` function. The two main parameters that define the calibration are the camera projection matrix.
-[[  1.15396093e+03   0.00000000e+00   6.69705357e+02]
- [  0.00000000e+00   1.14802496e+03   3.85656234e+02]
- [  0.00000000e+00   0.00000000e+00   1.00000000e+00]]
-and the five distortion coefficients.
-[[ -2.41017956e-01  -5.30721173e-02  -1.15810355e-03  -1.28318856e-04
-    2.67125290e-02]]
+I then used the arrays `objpoints` and `imgpoints` to compute the camera calibration and distortion coefficients using the `cv2.calibrateCamera()` function. The two main parameters that define the calibration are the camera projection matrix and the five distortion coefficients
+
+| Projection Matrix       | Coefficients   |
+|:-------------:|:-------------:|
+| [[  1.15396093e+03   0.00000000e+00   6.69705357e+02] [  0.00000000e+00   1.14802496e+03   3.85656234e+02][  0.00000000e+00   0.00000000e+00   1.00000000e+00]] | [[ -2.41017956e-01  -5.30721173e-02  -1.15810355e-03  -1.28318856e-04
+    2.67125290e-02]] |
 
 I applied this distortion correction to one of the calibration images using the `cv2.undistort()` function and obtained this result as shown below:
 
@@ -68,14 +68,14 @@ I also stored the camera projection matrix and the distortion coefficients in a 
 
 #### 1. Provide an example of a distortion-corrected image.
 
-To demonstrate this step, I will describe how I apply the distortion correction to one of the test images of the road like this one:
+I applied the distortion correction function to one of the test images of the road and the distorted original and the undistorted road image is shown below:
 ![alt text][image2]
 
 #### 2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
 
-I used a combination of color and gradient thresholds to generate a binary image (thresholding steps at lines 137 through 144 in `find-lanes.py`). All pixels in the gray image where the both the gradient in x and y are above a threshold is considered to be a lane line. The color threshold uses both the HLS and HSV coordinates and considers all pixels where the S and V values are above a threshold.
+I used a combination of color and gradient thresholds to generate a binary image (thresholding steps at lines 137 through 144 in `find-lanes.py`). I tried both the gray image and the V-Channel in the HSV image to extract the edges. I found that the V-Channel was more robust in the presense of shadows and lane line color. All pixels in the V-Channel of the image where the both the gradient in x and y are above a threshold are considered to be a lane marker. The color threshold uses both the HLS and HSV coordinates and considers all pixels where the S and V values are above a threshold. This is to allow for more robustness in the line finding.
 
-This is the input to the color + gradient thresholding function.
+This is the input to the combined color + gradient thresholding pipeline.
 
 ![alt text][image3]
 
@@ -85,9 +85,9 @@ The output of this thresholding step is shown below.
 
 #### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
 
-The main input to figuring out the mapping between the source and destination pixels using the warpPerspective function is to identify the images where the road lines are straight. This lets us visually check for the correctness of our src and dst points. I used the staight-lanes1.jpg images in the test_images directory.
+The main thing for figuring out the mapping between the source and destination pixels using the warpPerspective function is to identify the images where the road lines are straight. This lets us visually check for the correctness of our src and dst points. I used the staight-lanes1.jpg images in the test_images directory.
 
-The code to convert the given image to a warped view of the image from overhead is is in lines 174 in `find-lanes.py`.  The cv2.warpPerspective() function takes as inputs an image (`img`), as well as source (`src`) and destination (`dst`) points.  I chose the hardcode the source and destination points in the following manner:
+The code to convert the given image to a warped view of the image from overhead is is in lines 174 in `find-lanes.py`.  The cv2.warpPerspective() function takes as inputs an image (`img`), as well as source (`src`) and destination (`dst`) points.  I chose the hardcode the source and destination points in the following manner based on the example.ipynb in the examples directory. I changed the fraction from 0.25 to 0.2 by visually looking at the output:
 
 ```python
 src = np.float32(
@@ -117,7 +117,7 @@ I verified that my perspective transform was working as expected by drawing the 
 ![alt text][image5]
 
 ![alt text][image6]
-The warping transform is then used to transform any given image into a  view of the road from overhead. I used it to transform the thresholded image into a view of the lane lines as shown below.
+The warping transform can then used to transform any given image from the camera into a  view of the road from overhead. Another big advantage of the warping function is that it automatically segments out the region of interest that we chose. I used it to transform the thresholded image into a view of the lane lines as shown below.
 ![alt text][image7]
 
 #### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
@@ -148,7 +148,8 @@ right_fitx = np.array(right_fitx,np.int32)
 
 ```
 The result is two smooth curves that fit the left and right lines of the lane shown in blue and red in the figure below.
-The polynomial coefficients can be used to analytically compute the radius of curvature using this code.
+The polynomial coefficients can be used to analytically compute the radius of curvature of the left line as shown below. I found that the left and right lines differ in radius.
+
 ```python
 # Convert pixels to meters
 ym_per_pix = curve_centers.ym_per_pix
@@ -182,7 +183,7 @@ Here's a [link to my video result](./project_video.mp4)
 
 #### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
-One of the main drawbacks to my approach is the sensitivity of the lane line thresholding due to brightness and shadows. One way to fix this would be to try multiple thresholding approaches based on the overall appearance of the image based on the intensity histogram.
+One of the main drawbacks to the approach used here is the sensitivity of the lane line thresholding due to brightness and shadows. This will become even more of a problem when the road conditions change depending on the time of day and the weather conditions such as rain. One way to fix this would be to try multiple thresholding approaches based on the overall appearance of the image based on the intensity histogram.
 
 Another possible drawback could be the assumption that the transformation of the camera that is computed from the initial straight-lane.jpg remains the same through the rest of the test images and video. Any slope or tilt could affect the assumption.  
 

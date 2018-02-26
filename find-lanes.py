@@ -154,11 +154,12 @@ for idx, fname in enumerate(images):
 
     # Make a preprocess image.
     preprocessImage = np.zeros_like(uimg[:,:,0])
-#    gradx = abs_sobel_thresh(uimg, orient='x', thresh=(20,100))
-#    grady = abs_sobel_thresh(uimg, orient='y', thresh=(20,100))
+#    gradx = abs_sobel_thresh_gray(uimg, orient='x', thresh=(20,100))
+#    grady = abs_sobel_thresh_gray(uimg, orient='y', thresh=(20,100))
 #    c_binary = color_threshold(uimg, s_thresh=(100,255), v_thresh=(50,255))
-    gradx = abs_sobel_thresh_gray(uimg, orient='x', thresh=(20,100))
-    grady = abs_sobel_thresh_gray(uimg, orient='y', thresh=(20,100))
+#    preprocessImage[((gradx==1) & (grady==1) | (c_binary==1))] = 255
+    gradx = abs_sobel_thresh(uimg, orient='x', thresh=(20,100))
+    grady = abs_sobel_thresh(uimg, orient='y', thresh=(20,100))
     c_binary = color_threshold(uimg, s_thresh=(100,255), v_thresh=(50,255))
     preprocessImage[((gradx==1) & (grady==1) | (c_binary==1))] = 255
 
@@ -240,18 +241,24 @@ for idx, fname in enumerate(images):
 
 
     # Fit the curve to lanes.
-    yvals = range(0,warped.shape[0])
-
-    res_yvals = np.arange(warped.shape[0]-(window_height/2),0,-window_height)
     
+    yvals = range(0,warped.shape[0])
+    # Arrange the y coords of the left line of each of the 9 level rows from bottom to top.
+    res_yvals = np.arange(warped.shape[0]-(window_height/2),0,-window_height)
+
+    # Fit the x coords of the tracked center of each of the 9 level rows from bottom to top.
     left_fit = np.polyfit(res_yvals,leftx,2)
+    # Recompute the x coords for yvals directly from the equation
     left_fitx = left_fit[0]*yvals*yvals + left_fit[1]*yvals + left_fit[2]
     left_fitx = np.array(left_fitx,np.int32)
 
+    # Fit the x coords of the tracked center of each of the 9 level rows from bottom to top.
     right_fit = np.polyfit(res_yvals,rightx,2)
+    # Recompute the x coords for yvals directly from the equation
     right_fitx = right_fit[0]*yvals*yvals + right_fit[1]*yvals + right_fit[2]
     right_fitx = np.array(right_fitx,np.int32)
 
+    # 
     left_line = np.array(list(zip(np.concatenate((left_fitx-window_width/2,
                                                   left_fitx[::-1]+window_width/2), axis=0),
                                   np.concatenate((yvals,yvals[::-1]),axis=0))), np.int32)
@@ -276,23 +283,31 @@ for idx, fname in enumerate(images):
     base = cv2.addWeighted(img, 1.0, road_warped_bkg, -1.0, 0.0)
     result = cv2.addWeighted(base, 1.0, road_warped, 0.8, 0.0)
 
-    # Conversion factor from pixel to meters
+    # Conversion factor from pixel to meters.
     ym_per_pix = curve_centers.ym_per_pix
     xm_per_pix = curve_centers.xm_per_pix
 
+    # Compute the radius from the equation directly from the left line again in meters
     curve_fit_cr = np.polyfit(np.array(res_yvals,np.float32)*ym_per_pix,
                               np.array(leftx,np.float32)*xm_per_pix, 2)
-    curverad = ((1 + (2*curve_fit_cr[0]*yvals[-1]*ym_per_pix +
+    curveradl = ((1 + (2*curve_fit_cr[0]*yvals[-1]*ym_per_pix +
                       curve_fit_cr[1])**2)**1.5)/np.absolute(2*curve_fit_cr[0])
 
-    # Calculate the offset
+    curve_fit_cr2 = np.polyfit(np.array(res_yvals,np.float32)*ym_per_pix,
+                              np.array(rightx,np.float32)*xm_per_pix, 2)
+    curveradr = ((1 + (2*curve_fit_cr2[0]*yvals[-1]*ym_per_pix +
+                      curve_fit_cr2[1])**2)**1.5)/np.absolute(2*curve_fit_cr2[0])
+
+    # Calculate the camera center from the middle of the left and right lines from bottom row.
     camera_center = (left_fitx[-1] + right_fitx[-1])/2
     center_diff = (camera_center-warped.shape[1]/2)*xm_per_pix
     side_pos = 'left'
     if(center_diff <= 0):
         side_pos = 'right'
 
-    cv2.putText(result, 'Radius of Curvature = '+str(round(curverad,3))+'(m)',(50,50),
+#    cv2.putText(result, 'Radius of Curvature = '+str(round(curveradl,3))+'(m)',(50,50),
+#                cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255),2)
+    cv2.putText(result, 'Radius of Curvature = L '+str(round(curveradl))+'(m) R '+str(round(curveradr))+'(m)',(50,50),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255),2)
     cv2.putText(result, 'Vehicle is '+str(abs(round(center_diff,3)))+'(m)'+side_pos+' of center',
                 (50,100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255),2)

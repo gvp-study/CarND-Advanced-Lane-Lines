@@ -192,8 +192,8 @@ def process_image(img):
     warp_image = np.array(cv2.merge((warped, warped, warped)), np.uint8)
     warped_plus_tracked = cv2.addWeighted(warp_image, 1, template, 0.5, 0.0)
     
-    cv2.polylines(img, [isrc], True, (0,255,0), 3)
-    cv2.polylines(img, [idst], True, (255,0,0), 3)
+#    cv2.polylines(img, [isrc], True, (0,255,0), 3)
+#    cv2.polylines(img, [idst], True, (255,0,0), 3)
 
     # Fit the curve to lanes.
     yvals = range(0,warped.shape[0])
@@ -236,6 +236,7 @@ def process_image(img):
     ym_per_pix = curve_centers.ym_per_pix
     xm_per_pix = curve_centers.xm_per_pix
 
+    # Compute the radius from the equation directly from the left line again in meters
     curve_fit_cr = np.polyfit(np.array(res_yvals,np.float32)*ym_per_pix,
                               np.array(leftx,np.float32)*xm_per_pix, 2)
     curverad = ((1 + (2*curve_fit_cr[0]*yvals[-1]*ym_per_pix +
