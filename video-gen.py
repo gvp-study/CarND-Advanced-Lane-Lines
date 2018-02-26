@@ -157,6 +157,7 @@ def process_image(img):
     window_width = 25
     window_height = 80
     # Set up th overall class to do the tracking.
+    # The smooth_factor is 15 to average over previous frames in the video.
     curve_centers = tracker(Mywindow_width = window_width,
                             Mywindow_height = window_height,
                             Mymargin = 25,
@@ -226,6 +227,7 @@ def process_image(img):
     cv2.fillPoly(road_bkg, [left_line], color=[255,255,255])
     cv2.fillPoly(road_bkg, [right_line], color=[255,255,255])
 
+    # Convert all the drawings done in the warped image back to normal image coords.
     road_warped = cv2.warpPerspective(road, Minv, img_size, flags=cv2.INTER_LINEAR)
     road_warped_bkg = cv2.warpPerspective(road_bkg, Minv, img_size, flags=cv2.INTER_LINEAR)
     

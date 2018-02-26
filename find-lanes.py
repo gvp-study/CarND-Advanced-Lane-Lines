@@ -113,8 +113,9 @@ dist_pickle = pickle.load( open( "calibration_pickle.p", "rb" ) )
 mtx = dist_pickle["mtx"]
 dist = dist_pickle["dist"]
 dir = 'test_images'
-#images = glob.glob('./test_images2/challenge*.jpg')
+#dir = 'test_images2'
 images = glob.glob('./'+dir+'/test*.jpg')
+#images = glob.glob('./'+dir+'/challenge*.jpg')
 
 # Go over the list of images.
 for idx, fname in enumerate(images):
@@ -158,6 +159,7 @@ for idx, fname in enumerate(images):
 #    grady = abs_sobel_thresh_gray(uimg, orient='y', thresh=(20,100))
 #    c_binary = color_threshold(uimg, s_thresh=(100,255), v_thresh=(50,255))
 #    preprocessImage[((gradx==1) & (grady==1) | (c_binary==1))] = 255
+
     gradx = abs_sobel_thresh(uimg, orient='x', thresh=(20,100))
     grady = abs_sobel_thresh(uimg, orient='y', thresh=(20,100))
     c_binary = color_threshold(uimg, s_thresh=(100,255), v_thresh=(50,255))
@@ -192,7 +194,7 @@ for idx, fname in enumerate(images):
                             Mymargin = 25,
                             My_ym = 10/720,
                             My_xm = 4/384,
-                            Mysmooth_factor = 15)
+                            Mysmooth_factor = 2)
     window_centroids = curve_centers.find_window_centroids(warped)
 
     # Draw points
@@ -277,6 +279,7 @@ for idx, fname in enumerate(images):
     cv2.fillPoly(road_bkg, [left_line], color=[255,255,255])
     cv2.fillPoly(road_bkg, [right_line], color=[255,255,255])
 
+    # Convert all the drawings done in the warped image back to normal image coords.
     road_warped = cv2.warpPerspective(road, Minv, img_size, flags=cv2.INTER_LINEAR)
     road_warped_bkg = cv2.warpPerspective(road_bkg, Minv, img_size, flags=cv2.INTER_LINEAR)
     
