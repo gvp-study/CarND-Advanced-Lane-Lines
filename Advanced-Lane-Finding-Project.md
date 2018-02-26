@@ -133,12 +133,7 @@ The find_window_centroid function convolves a 25x80 pixel white rectangle on the
 
 The find_window_centroid also keep the line centers from all the previous smooth_factor number of frames to smooth out the results. Note that I set this factor to 1 in the find_lanes.py because the input are disparate frames used only for testing. I set it back to the default 15 when used in the video-gen.py.
 
-The result of the tracker is shown in the figure below.
-
-![alt text][image8]
-
-#### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
-After the window_centroids are computed in the image, I use the code in find-lanes.py to fit a 2nd order polynomial using the following code. Here I use the np.polyfit() function to find the lane line x value by feeding it the yaxis axis range from 0 to the image height. The resulting coefficients in left_fix and right_fix are then used to convert the yvals into left_fitx and right_fitx arrays for display.
+After the window_centroids are computed in the image, I use the code in lines 247-261 in find-lanes.py to fit a 2nd order polynomial using the following code. Here I use the np.polyfit() function to find the lane line x value by feeding it the yaxis axis range from 0 to the image height. The resulting coefficients in left_fix and right_fix are then used to convert the yvals into left_fitx and right_fitx arrays for display.
 ```python
 
 yvals = range(0,warped.shape[0])
@@ -154,12 +149,23 @@ right_fitx = right_fit[0]*yvals*yvals + right_fit[1]*yvals + right_fit[2]
 right_fitx = np.array(right_fitx,np.int32)
 
 ```
-The result is two smooth curves that fit the left and right lines of the lane shown in blue and red in the figure below. Note that these are plotted in the warped overhead image view.
-The polynomial coefficients can be used to analytically compute the radius of curvature of the left line using the formula as shown below. I found that the left and right lines differ in radius. I use only the left line curvature for display.
-Note that the recalculation multiplies both coordinates by their corresponding meters_per_pixel factors so the resulting curvature is in meters.
+
+The result of the tracker is shown in the figure below.
+
+![alt text][image8]
+
+#### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
+
+The polynomial coefficients can be used to analytically compute the radius of curvature of the left line using the formula as shown below.
+* If the function is defined by f(y)=Ay**+By+C
+* Curvature can be computed as R = ((1+(2Ay+B)^2)^1.5) / abs(2*A)
+
+I found that the left and right lines differ in radius. I use only the left line curvature for display.
+The offset of the center of the car from the middle of the lane is computed as the distance from the average of the left and right lines.
+Note that the recalculation multiplies both coordinates by their corresponding meters_per_pixel factors so the resulting curvature and center offset are in meters.
 
 ```python
-# Convert pixels to meters
+# Compute radius and center offset and convert from pixels to meters
 ym_per_pix = curve_centers.ym_per_pix
 xm_per_pix = curve_centers.xm_per_pix
 
@@ -167,7 +173,12 @@ curve_fit_cr = np.polyfit(np.array(res_yvals,np.float32)*ym_per_pix,
                          np.array(leftx,np.float32)*xm_per_pix, 2)
 curverad = ((1 + (2*curve_fit_cr[0]*yvals[-1]*ym_per_pix +
                  curve_fit_cr[1])**2)**1.5)/np.absolute(2*curve_fit_cr[0])
+
+camera_center = (left_fitx[-1] + right_fitx[-1])/2
+center_diff = (camera_center-warped.shape[1]/2)*xm_per_pix
+
 ```
+The result is two smooth curves that fit the left and right lines of the lane shown in blue and red in the figure below. Note that these are plotted in the warped overhead image view.
 
 ![alt text][image9]
 
