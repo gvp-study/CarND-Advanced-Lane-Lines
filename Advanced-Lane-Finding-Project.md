@@ -72,7 +72,7 @@ I applied the distortion correction function to one of the test images of the ro
 
 #### 2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
 
-I used a combination of color and gradient thresholds to generate a binary image (thresholding steps at lines 137 through 144 in `find-lanes.py`). I tried both the gray image and the V-Channel in the HSV image to extract the edges. I found that the V-Channel was more robust in the presense of shadows and lane line color. All pixels in the V-Channel of the image where the both the gradient in x and y are above a threshold are considered to be a lane marker. The color threshold uses both the HLS and HSV coordinates and considers all pixels where the S and V values are above a threshold. This is to allow for more robustness in the line finding.
+I used a combination of color and gradient thresholding functions to generate a binary image (thresholding steps at lines 163 through 167 in `find-lanes.py`). I tried both the gray image and the V-Channel in the HSV image to extract the edges. I found that the V-Channel was more robust in the presense of shadows and lane line color. All pixels in the V-Channel of the image where the both the gradient in x and y are above a threshold are considered to be a lane marker. The color threshold uses both the HLS and HSV coordinates and considers all pixels where the S and V values are above a threshold. This is to allow for more robustness in the line finding.
 
 This is the input to the combined color + gradient thresholding pipeline.
 
@@ -86,7 +86,9 @@ The output of this thresholding step is shown below.
 
 The main thing for figuring out the mapping between the source and destination pixels using the warpPerspective function is to identify the images where the road lines are straight. This lets us visually check for the correctness of our src and dst points. I used the staight-lanes1.jpg images in the test_images directory.
 
-The code to convert the given image to a warped view of the image from overhead is in lines 174 in `find-lanes.py`.  The cv2.warpPerspective() function takes as inputs an image (`img`), as well as source (`src`) and destination (`dst`) points.  I chose the hardcode the source and destination points in the following manner based on the example.ipynb in the examples directory. I changed the fraction from 0.25 to 0.2 by visually looking at the output:
+Once the four points in the two images are identified, M = cv2.getPerspectiveTransform(src,dst) is used to get the forward perspective transform M. The inverse perspective transform Minv is also computed at the same time using the reversing the arguments Minv = cv2.getPerspectiveTransform(dst,src).
+
+I chose the hardcode the source and destination points in the following manner based on the example.ipynb in the examples directory. I changed the fraction from 0.25 to 0.2 by visually looking at the output:
 
 ```python
 src = np.float32(
@@ -111,6 +113,8 @@ This resulted in the following source and destination points:
 | 1127, 720     | 1088, 720      |
 | 695, 460      | 1088, 0        |
 
+The code to convert a given image to a warped view of the image from overhead is in lines 174 - 181 in `find-lanes.py`.  The cv2.warpPerspective() function takes as inputs the image and the forward transform M.
+
 I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.
 
 ![alt text][image5]
@@ -127,7 +131,7 @@ window_centroids = curve_centers.find_window_centroids(warped)
 ```
 The find_window_centroid function convolves a 25x80 pixel white rectangle on the 9 (80 pixel high) horizontal slices of the warped image using the np.convolve function. The centers of the left and right lines are found by looking at the peaks in the convolved output. The tracker starts at the bottom of the image and uses the line centers from the previous slice to restrict the search for the maximum in a tight window. When no line marking is found in a slice, it keeps the centroid from the previous slice.
 
-The find_window_centroid also keep the line centers from all the previous smooth_factor number of frames to smooth out the results. Note that I set this factor to 1 in the find_lanes.py because the input are disparate frames used for testing. I set it back to the default 15 when used in the video-gen.py.
+The find_window_centroid also keep the line centers from all the previous smooth_factor number of frames to smooth out the results. Note that I set this factor to 1 in the find_lanes.py because the input are disparate frames used only for testing. I set it back to the default 15 when used in the video-gen.py.
 
 The result of the tracker is shown in the figure below.
 
@@ -151,7 +155,8 @@ right_fitx = np.array(right_fitx,np.int32)
 
 ```
 The result is two smooth curves that fit the left and right lines of the lane shown in blue and red in the figure below. Note that these are plotted in the warped overhead image view.
-The polynomial coefficients can be used to analytically compute the radius of curvature of the left line as shown below. I found that the left and right lines differ in radius. Note that the recalculation multiplies both coordinates by their corresponding meters_per_pixel factors so the resulting curvature is in meters.
+The polynomial coefficients can be used to analytically compute the radius of curvature of the left line using the formula as shown below. I found that the left and right lines differ in radius. I use only the left line curvature for display.
+Note that the recalculation multiplies both coordinates by their corresponding meters_per_pixel factors so the resulting curvature is in meters.
 
 ```python
 # Convert pixels to meters
@@ -168,8 +173,8 @@ curverad = ((1 + (2*curve_fit_cr[0]*yvals[-1]*ym_per_pix +
 
 #### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
 
-The main step in this process is to convert all the drawings done in the warped top down view back to the normal image coordinates using the warpPerspective() function with the inverse projection transform.
-I implemented this step in the lines 255 through 272 in my code in `find-lanes.py`   Here is an example of my result on a test image: Note that the radius of curvature and the offset from the center of the lane are also displayed.
+The main step in this process is to convert all the drawings done in the warped top down view back to the normal image coordinates using the warpPerspective() function with the inverse projection transform Minv.
+I implemented this step in the lines 283 through 284 in `find-lanes.py`   Here is an example of my result on a test image: Note that the radius of curvature and the offset from the center of the lane are also displayed.
 
 ![alt text][image10]
 

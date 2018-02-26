@@ -170,7 +170,7 @@ for idx, fname in enumerate(images):
     print('Image size is ', img_size)
     print(isrc)
     print(idst)
-    # Perform the transforms.
+    # Perform the transforms of the image to the warped overhead image.
     M = cv2.getPerspectiveTransform(src,dst)
     Minv = cv2.getPerspectiveTransform(dst,src)
     warped = cv2.warpPerspective(preprocessImage,M,
